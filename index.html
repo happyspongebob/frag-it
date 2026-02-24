@@ -227,6 +227,11 @@
       word-break: break-word;
     }
 
+    .char {
+      display: inline-block;
+      white-space: pre;
+    }
+
     .cardGlow {
       pointer-events: none;
       position: absolute;
@@ -274,6 +279,76 @@
       opacity: 0.70;
     }
 
+    .frag {
+      position: absolute;
+      left: 0;
+      top: 0;
+      transform: translate3d(var(--sx), var(--sy), 0) rotate(var(--r));
+      transform-origin: center;
+      opacity: 0;
+      will-change: transform, opacity, filter;
+      color: rgba(58, 47, 42, 0.92);
+      font-size: 18px;
+      line-height: 1;
+      letter-spacing: 0.01em;
+      padding: 6px 8px;
+      border-radius: 14px;
+      border: 1px solid rgba(58, 47, 42, 0.10);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.38));
+      box-shadow: 0 10px 22px rgba(58, 47, 42, 0.08);
+      filter: saturate(1.05);
+    }
+
+    .particle {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      transform: translate3d(var(--sx), var(--sy), 0);
+      opacity: 0;
+      will-change: transform, opacity, filter;
+      filter: blur(0px);
+      box-shadow: 0 10px 28px rgba(58, 47, 42, 0.10);
+    }
+
+    .shards.burst .frag {
+      opacity: 1;
+      animation: fragBurst 1700ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    .shards.burst .particle {
+      opacity: 1;
+      animation: particleBurst 1200ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes fragBurst {
+      0% {
+        opacity: 0;
+        transform: translate3d(var(--sx), var(--sy), 0) rotate(var(--r)) scale(0.92);
+        filter: blur(0px);
+      }
+      14% { opacity: 1; }
+      100% {
+        opacity: 0;
+        transform: translate3d(calc(var(--sx) + var(--x)), calc(var(--sy) + var(--y)), 0) rotate(calc(var(--r) + 60deg)) scale(0.72);
+        filter: blur(2px);
+      }
+    }
+
+    @keyframes particleBurst {
+      0% {
+        opacity: 0;
+        transform: translate3d(var(--sx), var(--sy), 0) scale(0.9);
+      }
+      10% { opacity: 1; }
+      100% {
+        opacity: 0;
+        transform: translate3d(calc(var(--sx) + var(--x)), calc(var(--sy) + var(--y)), 0) scale(0.65);
+      }
+    }
+
     .card.shatter {
       animation: cardFade 1100ms ease forwards;
     }
@@ -314,6 +389,14 @@
       line-height: 1.9;
       letter-spacing: 0.01em;
       color: rgba(58, 47, 42, 0.92);
+    }
+
+    .affirmQuote {
+      margin: 10px 0 0;
+      font-size: 14px;
+      line-height: 1.9;
+      letter-spacing: 0.01em;
+      color: rgba(58, 47, 42, 0.68);
     }
 
     .buffer.fadeIn {
@@ -420,6 +503,7 @@
 
           <div id="buffer" class="buffer fadeIn" aria-label="情绪缓冲文案区">
             <p class="bufferQuote" id="bufferQuote"></p>
+            <p class="affirmQuote" id="affirmQuote"></p>
           </div>
 
           <footer>
@@ -436,11 +520,50 @@
   </div>
 
   <script>
-    const comfortPool = [
-      "你不是不做，你只是把它从‘现在’移到了‘之后’。",
-      "想逃避，说明这件事对你来说真的不轻松。",
-      "也许你不是不想做这件事，你只是不想一次做完它。",
-      "现在放下，并不等于永远不面对。"
+    const comfortPools = {
+      common: [
+        "你不是不做，你只是把它从‘现在’移到了‘之后’。",
+        "想逃避，说明这件事对你来说真的不轻松。",
+        "也许你不是不想做这件事，你只是不想一次做完它。",
+        "现在放下，并不等于永远不面对。"
+      ],
+      work: [
+        "你不是懒，你只是被消耗了。",
+        "工作这件事，有时候就是会把人压住。你不用为此道歉。",
+        "你只是先把它从‘今天’挪开一会儿。"
+      ],
+      social: [
+        "不想回消息也没关系，你可以先把自己放在第一位。",
+        "社交的压力是真实的，不是你太敏感。",
+        "你可以选择暂时不解释。"
+      ],
+      love: [
+        "感情里的难受，不需要立刻整理成答案。",
+        "你不需要马上想清楚，也不需要马上释怀。",
+        "你只是先不碰它一下。"
+      ],
+      study: [
+        "学业的重量有时会让人喘不过气，这很正常。",
+        "你不是不努力，你只是需要一个缓冲。",
+        "先放下，脑子才能慢慢回来。"
+      ],
+      family: [
+        "家里的事，有时会让人无力。你不必立刻扛起来。",
+        "你可以先把自己照顾好，再决定要不要面对。",
+        "暂时不处理，并不代表你不在乎。"
+      ]
+    };
+
+    const affirmPool = [
+      "你已经很努力了。",
+      "你可以慢一点。",
+      "你现在这样也可以。",
+      "你不需要证明自己才值得被温柔对待。",
+      "能撑到这里，已经说明你不容易。"
+    ];
+
+    const palette = [
+      "#F2B184", "#F7C7A7", "#F6B2A5", "#F4D6A0", "#E8C2B7", "#EAB3C2", "#DDB7C8"
     ];
 
     const inputPanel = document.getElementById('inputPanel');
@@ -454,6 +577,7 @@
 
     const buffer = document.getElementById('buffer');
     const bufferQuote = document.getElementById('bufferQuote');
+    const affirmQuote = document.getElementById('affirmQuote');
     const exits = document.getElementById('exits');
     const status = document.getElementById('status');
 
@@ -471,33 +595,110 @@
       return (text || '').replace(/\s+/g, ' ').trim();
     }
 
-    function buildShards(count = 18) {
+    function classify(text) {
+      const t = (text || '').toLowerCase();
+      const has = (list) => list.some((k) => t.includes(k));
+
+      if (has(['工作', '加班', '老板', '同事', '项目', '绩效', 'kpi', '会议', '汇报', 'deadline', '客户'])) return 'work';
+      if (has(['朋友', '社交', '群', '消息', '回复', '尴尬', '见面', '关系', '人际'])) return 'social';
+      if (has(['恋爱', '喜欢', '分手', '前任', '对象', '暧昧', '结婚', '离婚', '爱', '感情'])) return 'love';
+      if (has(['考试', '作业', '论文', '答辩', '绩点', '学校', '老师', '学习', '上课', '复习'])) return 'study';
+      if (has(['家', '父母', '妈妈', '爸爸', '家庭', '孩子', '亲戚'])) return 'family';
+
+      return 'common';
+    }
+
+    function pickComfort(text) {
+      const key = classify(text);
+      const pool = (comfortPools[key] || []).concat(comfortPools.common);
+      return pickRandom(pool);
+    }
+
+    function randomPastel() {
+      return palette[Math.floor(Math.random() * palette.length)];
+    }
+
+    function prepareTextSpans(text) {
+      cardText.innerHTML = '';
+      const chars = Array.from(text);
+      for (const ch of chars) {
+        const span = document.createElement('span');
+        span.className = 'char';
+        span.textContent = ch === ' ' ? '\u00A0' : ch;
+        cardText.appendChild(span);
+      }
+    }
+
+    function burstText() {
       shards.innerHTML = '';
-      const spreadX = 300;
-      const spreadY = 220;
+      shards.classList.remove('play');
+      shards.classList.remove('burst');
+
+      const stageRect = shards.getBoundingClientRect();
+      const spans = Array.from(cardText.querySelectorAll('.char'));
+      const count = spans.length;
 
       for (let i = 0; i < count; i += 1) {
-        const el = document.createElement('div');
-        el.className = 'shard';
+        const sp = spans[i];
+        const rect = sp.getBoundingClientRect();
+        const cx = rect.left - stageRect.left + rect.width / 2;
+        const cy = rect.top - stageRect.top + rect.height / 2;
+
+        const frag = document.createElement('div');
+        frag.className = 'frag';
+        frag.textContent = sp.textContent;
 
         const angle = Math.random() * Math.PI * 2;
-        const radiusX = (0.35 + Math.random() * 0.75) * spreadX;
-        const radiusY = (0.35 + Math.random() * 0.75) * spreadY;
-
-        const x = Math.cos(angle) * radiusX;
-        const y = Math.sin(angle) * radiusY;
+        const dist = 180 + Math.random() * 260;
+        const x = Math.cos(angle) * dist;
+        const y = Math.sin(angle) * dist;
         const r = (Math.random() * 70 - 35).toFixed(1) + 'deg';
 
-        el.style.setProperty('--x', x.toFixed(1) + 'px');
-        el.style.setProperty('--y', y.toFixed(1) + 'px');
-        el.style.setProperty('--r', r);
-        el.style.animationDelay = (Math.random() * 180).toFixed(0) + 'ms';
-        el.style.width = (24 + Math.random() * 34).toFixed(0) + 'px';
-        el.style.height = (12 + Math.random() * 22).toFixed(0) + 'px';
-        el.style.borderRadius = (8 + Math.random() * 12).toFixed(0) + 'px';
+        frag.style.setProperty('--sx', cx.toFixed(1) + 'px');
+        frag.style.setProperty('--sy', cy.toFixed(1) + 'px');
+        frag.style.setProperty('--x', x.toFixed(1) + 'px');
+        frag.style.setProperty('--y', y.toFixed(1) + 'px');
+        frag.style.setProperty('--r', r);
+        frag.style.animationDelay = (Math.random() * 160).toFixed(0) + 'ms';
 
-        shards.appendChild(el);
+        const colorA = randomPastel();
+        const colorB = randomPastel();
+        frag.style.background = `linear-gradient(180deg, ${colorA}55, ${colorB}22)`;
+        frag.style.borderColor = `${colorA}33`;
+
+        shards.appendChild(frag);
       }
+
+      const particleCount = 36;
+      const center = card.getBoundingClientRect();
+      const sx = (center.left - stageRect.left) + center.width / 2;
+      const sy = (center.top - stageRect.top) + center.height / 2;
+
+      for (let i = 0; i < particleCount; i += 1) {
+        const p = document.createElement('div');
+        p.className = 'particle';
+
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 110 + Math.random() * 260;
+        const x = Math.cos(angle) * dist;
+        const y = Math.sin(angle) * dist;
+
+        p.style.setProperty('--sx', sx.toFixed(1) + 'px');
+        p.style.setProperty('--sy', sy.toFixed(1) + 'px');
+        p.style.setProperty('--x', x.toFixed(1) + 'px');
+        p.style.setProperty('--y', y.toFixed(1) + 'px');
+        p.style.animationDelay = (Math.random() * 140).toFixed(0) + 'ms';
+
+        const c = randomPastel();
+        p.style.background = `${c}AA`;
+        p.style.width = (5 + Math.random() * 8).toFixed(0) + 'px';
+        p.style.height = p.style.width;
+        shards.appendChild(p);
+      }
+
+      spans.forEach((s) => { s.style.opacity = '0'; });
+      shards.getBoundingClientRect();
+      shards.classList.add('burst');
     }
 
     async function runFlow() {
@@ -514,31 +715,33 @@
       inputPanel.classList.add('hidden');
       await sleep(650);
 
-      cardText.textContent = value;
+      prepareTextSpans(value);
       bufferQuote.textContent = '';
+      affirmQuote.textContent = '';
       buffer.classList.remove('show');
       exits.classList.remove('show');
+      card.classList.remove('shatter');
+      shards.classList.remove('burst');
 
       shatterPanel.classList.remove('hidden');
       await sleep(650);
 
-      buildShards(18);
-
-      await sleep(500);
+      await sleep(520);
       status.textContent = '正在粉碎。';
 
       // Start shatter
       card.classList.add('shatter');
-      shards.classList.add('play');
+      burstText();
 
       // Wait for shatter animation to be "done"
-      await sleep(1350);
+      await sleep(1600);
 
       status.textContent = '粉碎完成。';
 
       // Show comfort text
       await sleep(450);
-      bufferQuote.textContent = pickRandom(comfortPool);
+      bufferQuote.textContent = pickComfort(value);
+      affirmQuote.textContent = pickRandom(affirmPool);
       // force reflow so transition always triggers
       buffer.getBoundingClientRect();
       buffer.classList.add('show');
