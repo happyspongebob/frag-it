@@ -25,7 +25,7 @@ export default function App() {
   const durations = useMemo(() => {
     return {
       page: reduceMotion ? 0.25 : 0.65,
-      crushing: reduceMotion ? 650 : 1550,
+      crushing: reduceMotion ? 1200 : 4200,
     }
   }, [reduceMotion])
 
@@ -138,7 +138,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={startCrush}
-                    className="mt-5 w-full rounded-full bg-gradient-to-r from-[#f7c7a7] to-[#f2b184] px-5 py-3.5 text-sm font-semibold text-warm-ink/90 shadow-[0_14px_30px_rgba(242,177,132,0.22)] transition active:scale-[0.99]"
+                    className="mt-5 w-full rounded-full bg-gradient-to-r from-warm-accent2 to-warm-accent px-5 py-3.5 text-sm font-semibold text-warm-ink/90 shadow-[0_14px_30px_rgba(233,198,168,0.18)] transition active:scale-[0.99]"
                   >
                     把它放下来
                   </button>
@@ -204,7 +204,7 @@ export default function App() {
                       <ComfortMessage value={comfort} />
                     </motion.div>
 
-                    <div className="mt-6 rounded-full bg-gradient-to-r from-[#f7c7a766] to-[#f2b18444] px-4 py-3 text-center text-sm font-semibold text-warm-ink/80">
+                    <div className="mt-6 rounded-full bg-gradient-to-r from-warm-accent2/40 to-warm-accent/25 px-4 py-3 text-center text-sm font-semibold text-warm-ink/80">
                       {comfort.affirmation}
                     </div>
                   </div>
@@ -212,7 +212,7 @@ export default function App() {
                   <button
                     type="button"
                     onClick={resetAll}
-                    className="mx-auto mt-8 flex w-full max-w-[360px] items-center justify-center rounded-full bg-gradient-to-r from-[#f7c7a7] to-[#f2b184] px-5 py-3.5 text-sm font-semibold text-warm-ink/90 shadow-[0_14px_30px_rgba(242,177,132,0.22)] transition active:scale-[0.99]"
+                    className="mx-auto mt-8 flex w-full max-w-[360px] items-center justify-center rounded-full bg-gradient-to-r from-warm-accent2 to-warm-accent px-5 py-3.5 text-sm font-semibold text-warm-ink/90 shadow-[0_14px_30px_rgba(233,198,168,0.18)] transition active:scale-[0.99]"
                   >
                     粉碎新的烦恼
                   </button>

@@ -14,16 +14,39 @@ type Strip = {
   color: string
 }
 
+type PilePiece = {
+  id: string
+  x: number
+  y: number
+  w: number
+  h: number
+  rotate: number
+  opacity: number
+  color: string
+  delay: number
+}
+
+type Particle = {
+  id: string
+  dx: number
+  dy: number
+  size: number
+  delay: number
+  duration: number
+  opacity: number
+  color: string
+}
+
 function rand(min: number, max: number) {
   return min + Math.random() * (max - min)
 }
 
 const colors = [
-  'rgba(255, 255, 255, 0.78)',
-  'rgba(247, 199, 167, 0.62)',
-  'rgba(242, 177, 132, 0.62)',
-  'rgba(244, 214, 160, 0.58)',
-  'rgba(234, 179, 194, 0.50)',
+  'rgba(255, 255, 255, 0.80)',
+  'rgba(242, 221, 204, 0.70)',
+  'rgba(233, 198, 168, 0.62)',
+  'rgba(244, 236, 226, 0.72)',
+  'rgba(255, 255, 255, 0.55)',
 ]
 
 export default function ShatterEffect(props: {
@@ -55,6 +78,51 @@ export default function ShatterEffect(props: {
         sway: rand(-28, 28),
         opacity: rand(0.25, 0.58),
         color: colors[Math.floor(Math.random() * colors.length)],
+      })
+    }
+
+    return list
+  }, [props.seed])
+
+  const particles = useMemo<Particle[]>(() => {
+    const list: Particle[] = []
+    const count = Math.floor(rand(46, 68))
+
+    for (let i = 0; i < count; i += 1) {
+      const angle = rand(-Math.PI, Math.PI)
+      const dist = rand(70, 200)
+      const dx = Math.cos(angle) * dist
+      const dy = Math.sin(angle) * dist * 0.72
+      list.push({
+        id: `pt-${props.seed}-${i}`,
+        dx,
+        dy,
+        size: rand(6, 12),
+        delay: rand(0.12, 2.9),
+        duration: rand(1.2, 1.85),
+        opacity: rand(0.55, 0.92),
+        color: colors[Math.floor(Math.random() * colors.length)],
+      })
+    }
+
+    return list
+  }, [props.seed])
+
+  const pile = useMemo<PilePiece[]>(() => {
+    const list: PilePiece[] = []
+    const count = Math.floor(rand(22, 33))
+
+    for (let i = 0; i < count; i += 1) {
+      list.push({
+        id: `p-${props.seed}-${i}`,
+        x: rand(-95, 95),
+        y: rand(-6, 16),
+        w: rand(10, 26),
+        h: rand(6, 14),
+        rotate: rand(-18, 18),
+        opacity: rand(0.32, 0.62),
+        color: colors[Math.floor(Math.random() * colors.length)],
+        delay: rand(0.85, 1.25),
       })
     }
 
@@ -96,10 +164,38 @@ export default function ShatterEffect(props: {
         transition={{ duration: 1.35, ease: [0.16, 1, 0.3, 1] }}
       />
 
+      {particles.map((p) => (
+        <motion.div
+          key={p.id}
+          className="absolute left-1/2 top-1/2 z-20 rounded-full"
+          data-particle="1"
+          style={{
+            width: `${p.size}px`,
+            height: `${p.size}px`,
+            background: p.color,
+            border: '1px solid rgba(58, 47, 42, 0.12)',
+            boxShadow:
+              '0 14px 30px rgba(58, 47, 42, 0.10), 0 0 0 3px rgba(255, 255, 255, 0.22), 0 0 18px rgba(255, 213, 174, 0.55)',
+          }}
+          initial={{ opacity: 0, x: 0, y: 0, scale: 0.9 }}
+          animate={{
+            opacity: [0, p.opacity, 0],
+            x: [0, p.dx],
+            y: [0, p.dy],
+            scale: [0.9, 1, 0.65],
+          }}
+          transition={{
+            duration: p.duration,
+            delay: p.delay,
+            ease: [0.16, 1, 0.3, 1],
+          }}
+        />
+      ))}
+
       {strips.map((s) => (
         <motion.div
           key={s.id}
-          className="absolute left-1/2 top-1/2 rounded-md border"
+          className="absolute left-1/2 top-1/2 z-10 rounded-md border"
           style={{
             width: `${s.w}px`,
             height: `${s.h}px`,
@@ -116,12 +212,41 @@ export default function ShatterEffect(props: {
             scale: [1, 1, 0.85],
           }}
           transition={{
-            duration: rand(1.25, 1.75),
+            duration: rand(2.4, 3.2),
             delay: s.delay,
             ease: [0.16, 1, 0.3, 1],
           }}
         />
       ))}
+
+      <div className="absolute inset-x-0 bottom-6">
+        <div className="relative mx-auto h-20 w-[420px] max-w-[92%]">
+          {pile.map((p) => (
+            <motion.div
+              key={p.id}
+              className="absolute left-1/2 top-1/2 rounded-md border"
+              style={{
+                width: `${p.w}px`,
+                height: `${p.h}px`,
+                background: p.color,
+                borderColor: 'rgba(58, 47, 42, 0.10)',
+                boxShadow: '0 18px 34px rgba(58, 47, 42, 0.10)',
+              }}
+              initial={{ opacity: 0, x: p.x, y: p.y - 10, rotate: p.rotate, scale: 0.98 }}
+              animate={{
+                opacity: [0, p.opacity, Math.min(0.75, p.opacity + 0.18)],
+                y: [p.y - 10, p.y + 6, p.y + 10],
+                scale: [0.98, 1, 1],
+              }}
+              transition={{
+                delay: p.delay,
+                duration: rand(0.75, 1.05),
+                ease: [0.16, 1, 0.3, 1],
+              }}
+            />
+          ))}
+        </div>
+      </div>
     </div>
   )
 }

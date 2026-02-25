@@ -5,12 +5,12 @@ module.exports = {
     extend: {
       colors: {
         warm: {
-          bg1: '#fbf1e6',
-          bg2: '#f8e5d1',
+          bg1: '#fbf7f1',
+          bg2: '#f3ece2',
           ink: '#3a2f2a',
-          muted: 'rgba(58, 47, 42, 0.62)',
-          accent: '#f2b184',
-          accent2: '#f7c7a7',
+          muted: 'rgba(58, 47, 42, 0.58)',
+          accent: '#e9c6a8',
+          accent2: '#f2ddcc',
         },
       },
       borderRadius: {
