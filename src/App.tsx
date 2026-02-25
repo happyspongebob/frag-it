@@ -22,6 +22,10 @@ export default function App() {
 
   const comfort = useComfortMessage(problem)
 
+  const followUps = useMemo(() => {
+    return ['5 分钟后再回来看看', '把它变成一个更小的东西', '今天不碰，也是一种选择']
+  }, [])
+
   const durations = useMemo(() => {
     return {
       page: reduceMotion ? 0.25 : 0.65,
@@ -216,6 +220,29 @@ export default function App() {
                   >
                     粉碎新的烦恼
                   </button>
+
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{
+                      duration: reduceMotion ? 0.25 : 0.7,
+                      delay: reduceMotion ? 0 : 0.05,
+                      ease: 'easeOut',
+                    }}
+                    className="mx-auto mt-5 w-full max-w-[520px]"
+                  >
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      {followUps.map((label) => (
+                        <button
+                          key={label}
+                          type="button"
+                          className="rounded-full border border-black/10 bg-white/35 px-4 py-2.5 text-xs font-semibold text-warm-ink/70 backdrop-blur transition hover:bg-white/50 active:scale-[0.99]"
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </motion.div>
 
                   <p className="mt-5 text-center text-xs leading-7 text-warm-ink/40">
                     记住：每一次的逃避，都是为了更好的前进。
