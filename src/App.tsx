@@ -18,6 +18,11 @@ export default function App() {
   const [seed, setSeed] = useState(1)
   const [soundOn, setSoundOn] = useState(true)
 
+  const dropRef = useRef<HTMLDivElement | null>(null)
+  const [overDrop, setOverDrop] = useState(false)
+  const [dragging, setDragging] = useState(false)
+  const [dragResetKey, setDragResetKey] = useState(1)
+
   const tearAudioRef = useRef<HTMLAudioElement | null>(null)
 
   const comfort = useComfortMessage(problem)
@@ -49,7 +54,32 @@ export default function App() {
     return () => window.clearTimeout(t)
   }, [durations.crushing, state])
 
-  function startCrush() {
+  function getClientPoint(event: MouseEvent | TouchEvent | PointerEvent) {
+    if ('clientX' in event && typeof event.clientX === 'number') {
+      return { x: event.clientX, y: event.clientY }
+    }
+
+    if ('changedTouches' in event && event.changedTouches?.length) {
+      const t = event.changedTouches[0]
+      return { x: t.clientX, y: t.clientY }
+    }
+
+    if ('touches' in event && event.touches?.length) {
+      const t = event.touches[0]
+      return { x: t.clientX, y: t.clientY }
+    }
+
+    return null
+  }
+
+  function isPointInDropZone(clientX: number, clientY: number) {
+    const el = dropRef.current
+    if (!el) return false
+    const rect = el.getBoundingClientRect()
+    return clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom
+  }
+
+  function triggerCrush(_source: 'button' | 'drag') {
     const cleaned = sanitize(input)
     const value = cleaned.length ? cleaned : '一些你暂时不想面对的事情'
 
@@ -67,6 +97,10 @@ export default function App() {
     setProblem(value)
     setSeed((s) => s + 1)
     setState('crushing')
+  }
+
+  function startCrush() {
+    triggerCrush('button')
   }
 
   function resetAll() {
@@ -137,6 +171,64 @@ export default function App() {
                     <p className="mt-3 text-xs leading-6 text-warm-ink/45">
                       例如：我不想上班、不想社交、不想面对那个困难…
                     </p>
+                  </div>
+
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                    <motion.div
+                      key={dragResetKey}
+                      drag
+                      dragMomentum={false}
+                      dragElastic={0.12}
+                      onDragStart={() => {
+                        setDragging(true)
+                        setOverDrop(false)
+                      }}
+                      onDrag={(event) => {
+                        const p = getClientPoint(event)
+                        if (!p) return
+                        setOverDrop(isPointInDropZone(p.x, p.y))
+                      }}
+                      onDragEnd={(event) => {
+                        const p = getClientPoint(event)
+                        const hit = p ? isPointInDropZone(p.x, p.y) : false
+                        setDragging(false)
+                        setOverDrop(false)
+                        setDragResetKey((k) => k + 1)
+                        if (hit) triggerCrush('drag')
+                      }}
+                      whileTap={{ scale: 1.01 }}
+                      whileDrag={{ scale: 1.02 }}
+                      transition={{ duration: reduceMotion ? 0.12 : 0.2, ease: 'easeOut' }}
+                      style={{ touchAction: 'none' }}
+                      className="cursor-grab rounded-[22px] border border-black/10 bg-white/35 px-4 py-3 shadow-soft active:cursor-grabbing"
+                    >
+                      <p className="text-[11px] font-semibold tracking-wide text-warm-ink/55">拖拽这张卡片</p>
+                      <p className="mt-1 text-sm leading-7 text-warm-ink/80">
+                        {sanitize(input).length ? `“${sanitize(input)}”` : '“现在压在你身上的事情是……”'}
+                      </p>
+                      <p className="mt-2 text-[11px] leading-6 text-warm-ink/40">松开前，把它拖到右边。</p>
+                    </motion.div>
+
+                    <div
+                      ref={dropRef}
+                      className={
+                        `relative flex items-center justify-center rounded-[22px] border border-black/10 px-4 py-4 text-center transition ` +
+                        (overDrop
+                          ? 'bg-gradient-to-br from-warm-accent2/30 to-warm-accent/15 shadow-soft'
+                          : dragging
+                            ? 'bg-white/30'
+                            : 'bg-white/20')
+                      }
+                    >
+                      <div className="space-y-1">
+                        <p className="text-[11px] font-semibold tracking-wide text-warm-ink/55">
+                          {overDrop ? '松手以粉碎' : '粉碎区'}
+                        </p>
+                        <p className="text-xs leading-6 text-warm-ink/45">
+                          {overDrop ? '就放在这里就好。' : '把重量拖到这里。'}
+                        </p>
+                      </div>
+                    </div>
                   </div>
 
                   <button
