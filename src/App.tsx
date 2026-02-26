@@ -1,9 +1,10 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import ComfortMessage, { useComfortMessage } from './components/ComfortMessage'
+import CanvasShatter from './components/CanvasShatter'
+import ComfortMessage, { type ComfortMessageValue, useComfortMessage } from './components/ComfortMessage'
 import ShatterEffect from './components/ShatterEffect'
 
-type ViewState = 'input' | 'crushing' | 'result'
+type ViewState = 'input' | 'preCrush' | 'crushing' | 'result'
 
 function sanitize(text: string) {
   return (text || '').replace(/\s+/g, ' ').trim()
@@ -25,7 +26,15 @@ export default function App() {
 
   const tearAudioRef = useRef<HTMLAudioElement | null>(null)
 
-  const comfort = useComfortMessage(problem)
+  const localComfort = useComfortMessage(problem)
+
+  const [aiComfort, setAiComfort] = useState<ComfortMessageValue | null>(null)
+  const [aiComfortStatus, setAiComfortStatus] = useState<
+    'idle' | 'loading' | 'success' | 'fallback'
+  >('idle')
+  const comfortReqIdRef = useRef(0)
+
+  const comfortToShow = aiComfortStatus === 'success' && aiComfort ? aiComfort : localComfort
 
   const followUps = useMemo(() => {
     return ['5 分钟后再回来看看', '把它变成一个更小的东西', '今天不碰，也是一种选择']
@@ -34,7 +43,8 @@ export default function App() {
   const durations = useMemo(() => {
     return {
       page: reduceMotion ? 0.25 : 0.65,
-      crushing: reduceMotion ? 1200 : 4200,
+      preCrush: reduceMotion ? 0 : 900,
+      crushing: reduceMotion ? 1200 : 3300,
     }
   }, [reduceMotion])
 
@@ -45,14 +55,22 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (state !== 'crushing') return
+    if (state === 'preCrush') {
+      const t = window.setTimeout(() => {
+        setState('crushing')
+      }, durations.preCrush)
 
-    const t = window.setTimeout(() => {
-      setState('result')
-    }, durations.crushing)
+      return () => window.clearTimeout(t)
+    }
 
-    return () => window.clearTimeout(t)
-  }, [durations.crushing, state])
+    if (state === 'crushing') {
+      const t = window.setTimeout(() => {
+        setState('result')
+      }, durations.crushing)
+
+      return () => window.clearTimeout(t)
+    }
+  }, [durations.crushing, durations.preCrush, state])
 
   function getClientPoint(event: MouseEvent | TouchEvent | PointerEvent) {
     if ('clientX' in event && typeof event.clientX === 'number') {
@@ -83,6 +101,65 @@ export default function App() {
     const cleaned = sanitize(input)
     const value = cleaned.length ? cleaned : '一些你暂时不想面对的事情'
 
+    const reqId = (comfortReqIdRef.current += 1)
+    setAiComfort(null)
+    setAiComfortStatus('loading')
+
+    const controller = new AbortController()
+    const timeoutMs = 2500
+    const t = window.setTimeout(() => controller.abort(), timeoutMs)
+
+    void fetch('/api/comfort', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        problem: value,
+        locale: 'zh-CN',
+        clientId: '',
+        requestId: String(reqId),
+      }),
+      signal: controller.signal,
+    })
+      .then(async (r) => {
+        if (!r.ok) throw new Error('api_error')
+        return (await r.json()) as {
+          comfort?: unknown
+          affirmation?: unknown
+          category?: unknown
+        }
+      })
+      .then((data) => {
+        if (comfortReqIdRef.current !== reqId) return
+
+        const comfortArray = Array.isArray(data.comfort)
+          ? data.comfort.filter((v) => typeof v === 'string' && v.trim().length).slice(0, 4)
+          : []
+        const affirmation = typeof data.affirmation === 'string' ? data.affirmation : ''
+        const category = typeof data.category === 'string' ? data.category : 'other'
+
+        if (comfortArray.length < 2 || !affirmation.trim().length) {
+          setAiComfortStatus('fallback')
+          return
+        }
+
+        setAiComfort({
+          problemText: value,
+          comfort: comfortArray,
+          affirmation,
+          category,
+        })
+        setAiComfortStatus('success')
+      })
+      .catch(() => {
+        if (comfortReqIdRef.current !== reqId) return
+        setAiComfortStatus('fallback')
+      })
+      .finally(() => {
+        window.clearTimeout(t)
+      })
+
     if (soundOn && tearAudioRef.current) {
       try {
         tearAudioRef.current.pause()
@@ -96,7 +173,7 @@ export default function App() {
 
     setProblem(value)
     setSeed((s) => s + 1)
-    setState('crushing')
+    setState(reduceMotion ? 'crushing' : 'preCrush')
   }
 
   function startCrush() {
@@ -107,6 +184,8 @@ export default function App() {
     setInput('')
     setProblem('')
     setSeed((s) => s + 1)
+    setAiComfort(null)
+    setAiComfortStatus('idle')
     setState('input')
   }
 
@@ -256,7 +335,19 @@ export default function App() {
                 className="relative overflow-hidden rounded-[26px] border border-black/10 bg-white/28 shadow-soft backdrop-blur-xl"
                 aria-live="polite"
               >
+                <CanvasShatter text={problem} seed={seed} active durationMs={2200} />
+
                 <div className="relative z-10 flex min-h-[320px] flex-col items-center justify-center px-6 py-14 text-center">
+                  <motion.div
+                    initial={{ opacity: 1, scale: 1 }}
+                    animate={{ opacity: [1, 0.7, 0], scale: [1, 0.995, 0.985] }}
+                    transition={{ duration: reduceMotion ? 0.12 : 1.35, ease: 'easeOut' }}
+                    className="mx-auto max-w-[560px] rounded-[22px] border border-black/10 bg-white/35 px-5 py-4 shadow-soft backdrop-blur"
+                  >
+                    <p className="text-[11px] font-semibold tracking-wide text-warm-ink/55">正在被粉碎的烦恼</p>
+                    <p className="mt-2 text-base leading-8 text-warm-ink/85">“{problem}”</p>
+                  </motion.div>
+
                   <p className="text-[clamp(22px,2.7vw,32px)] font-semibold tracking-[-0.01em] text-warm-ink">
                     正在粉碎中...
                   </p>
@@ -266,6 +357,34 @@ export default function App() {
                 </div>
 
                 <ShatterEffect seed={seed} />
+              </motion.div>
+            )}
+
+            {state === 'preCrush' && (
+              <motion.div
+                key="preCrush"
+                initial={{ opacity: 0, scale: 1 }}
+                animate={{ opacity: 1, scale: [1, 0.992, 0.985] }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: durations.page, ease: 'easeOut' }}
+                className="relative overflow-hidden rounded-[26px] border border-black/10 bg-white/32 shadow-soft backdrop-blur-xl"
+                aria-live="polite"
+              >
+                <div className="relative z-10 flex min-h-[320px] flex-col items-center justify-center px-6 py-14 text-center">
+                  <motion.div
+                    animate={{
+                      x: [0, -4, 3, -3, 2, -2, 1, 0],
+                      y: [0, 2, -2, 2, -1, 1, 0, 0],
+                      rotate: [0, -0.3, 0.25, -0.2, 0.18, -0.1, 0.08, 0],
+                    }}
+                    transition={{ duration: 0.62, ease: 'easeOut' }}
+                    className="mx-auto max-w-[560px] rounded-[22px] border border-black/10 bg-white/40 px-5 py-4 shadow-soft backdrop-blur"
+                  >
+                    <p className="text-[11px] font-semibold tracking-wide text-warm-ink/55">正在蓄力…</p>
+                    <p className="mt-2 text-base leading-8 text-warm-ink/85">“{problem}”</p>
+                    <p className="mt-2 text-xs leading-7 text-warm-ink/50">先抖一抖，再把它拆开。</p>
+                  </motion.div>
+                </div>
               </motion.div>
             )}
 
@@ -295,14 +414,27 @@ export default function App() {
                     <motion.div
                       initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: reduceMotion ? 0.25 : 0.85, ease: 'easeOut' }}
+                      transition={{
+                        duration: reduceMotion ? 0.25 : 3,
+                        delay: reduceMotion ? 0 : 0.6,
+                        ease: 'easeOut',
+                      }}
                     >
-                      <ComfortMessage value={comfort} />
+                      <ComfortMessage value={comfortToShow} />
                     </motion.div>
 
-                    <div className="mt-6 rounded-full bg-gradient-to-r from-warm-accent2/40 to-warm-accent/25 px-4 py-3 text-center text-sm font-semibold text-warm-ink/80">
-                      {comfort.affirmation}
-                    </div>
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{
+                        duration: reduceMotion ? 0.25 : 2.2,
+                        delay: reduceMotion ? 0 : 1.25,
+                        ease: 'easeOut',
+                      }}
+                      className="mt-6 rounded-full bg-gradient-to-r from-warm-accent2/40 to-warm-accent/25 px-4 py-3 text-center text-sm font-semibold text-warm-ink/80"
+                    >
+                      {comfortToShow.affirmation}
+                    </motion.div>
                   </div>
 
                   <button

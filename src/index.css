@@ -20,6 +20,36 @@ body {
     radial-gradient(900px 600px at 15% 10%, rgba(242, 221, 204, 0.28), transparent 60%),
     radial-gradient(800px 600px at 85% 20%, rgba(233, 198, 168, 0.18), transparent 55%),
     linear-gradient(180deg, #fbf7f1, #f3ece2);
+  position: relative;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  background: linear-gradient(180deg, #f9f5f0, #f2eae0);
+  opacity: 0.55;
+  animation: warm-breathe 9s ease-in-out infinite;
+}
+
+@keyframes warm-breathe {
+  0% {
+    opacity: 0.48;
+  }
+  50% {
+    opacity: 0.68;
+  }
+  100% {
+    opacity: 0.48;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before {
+    animation: none;
+  }
 }
 
 * {
