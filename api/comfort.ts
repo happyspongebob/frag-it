@@ -57,17 +57,17 @@ type RequestBody = {
    const existing = rateLimitStore.get(ip)
    if (!existing || existing.resetAt <= now) {
      rateLimitStore.set(ip, { resetAt: now + windowMs, count: 1 })
-     return { ok: true }
+     return { ok: true } as const
    }
 
    if (existing.count >= max) {
      const retryAfterSeconds = Math.max(1, Math.ceil((existing.resetAt - now) / 1000))
-     return { ok: false, retryAfterSeconds }
+     return { ok: false, retryAfterSeconds } as const
    }
 
    existing.count += 1
    rateLimitStore.set(ip, existing)
-   return { ok: true }
+   return { ok: true } as const
  }
 
 function readJsonBody(req: IncomingMessage): Promise<unknown> {
