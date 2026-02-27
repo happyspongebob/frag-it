@@ -49,7 +49,11 @@ type RequestBody = {
    return String((req.socket as any)?.remoteAddress ?? '')
  }
 
- function rateLimit(ip: string): { ok: true } | { ok: false; retryAfterSeconds: number } {
+type RateLimitResult =
+  | { ok: true }
+  | { ok: false; retryAfterSeconds: number }
+
+function rateLimit(ip: string): RateLimitResult {
    const now = Date.now()
    const windowMs = 60_000
    const max = 30
@@ -57,17 +61,17 @@ type RequestBody = {
    const existing = rateLimitStore.get(ip)
    if (!existing || existing.resetAt <= now) {
      rateLimitStore.set(ip, { resetAt: now + windowMs, count: 1 })
-     return { ok: true } as const
+     return { ok: true }
    }
 
    if (existing.count >= max) {
      const retryAfterSeconds = Math.max(1, Math.ceil((existing.resetAt - now) / 1000))
-     return { ok: false, retryAfterSeconds } as const
+     return { ok: false, retryAfterSeconds }
    }
 
    existing.count += 1
    rateLimitStore.set(ip, existing)
-   return { ok: true } as const
+   return { ok: true } 
  }
 
 function readJsonBody(req: IncomingMessage): Promise<unknown> {
@@ -231,7 +235,7 @@ export default async function handler(req: IncomingMessage & { method?: string; 
 
    const ip = getClientIp(req)
    const rl = rateLimit(ip)
-   if (!rl.ok) {
+   if (rl.ok === false) {
      res.statusCode = 429
      res.setHeader('Content-Type', 'application/json; charset=utf-8')
      res.setHeader('Retry-After', String(rl.retryAfterSeconds))
@@ -262,7 +266,8 @@ export default async function handler(req: IncomingMessage & { method?: string; 
     return
   }
 
-  const body = (bodyUnknown || {}) as RequestBody
+  const body: RequestBody =
+    bodyUnknown && typeof bodyUnknown === 'object' ? (bodyUnknown as RequestBody) : {}
   const problem = sanitize(getString(body.problem))
   const locale = sanitize(getString(body.locale))
   const clientId = sanitize(getString(body.clientId))
@@ -330,7 +335,12 @@ export default async function handler(req: IncomingMessage & { method?: string; 
       return
     }
 
-    const upstreamJson = JSON.parse(upstreamText) as any
+    let upstreamJson: any
+    try {
+      upstreamJson = JSON.parse(upstreamText) as any
+    } catch {
+      throw new Error('Invalid upstream JSON')
+    }
     const content = String(upstreamJson?.choices?.[0]?.message?.content ?? '')
     const finishReason = String(upstreamJson?.choices?.[0]?.finish_reason ?? '')
     const model = String(upstreamJson?.model ?? 'qwen-plus')
@@ -366,12 +376,14 @@ export default async function handler(req: IncomingMessage & { method?: string; 
       return
     }
 
+    const safeParsed = parsed as ComfortPayload
+
     const payload: ComfortPayload = {
-      ...parsed,
+      ...safeParsed,
       ext: {
-        ...parsed.ext,
-        clientId: parsed.ext?.clientId ? String(parsed.ext.clientId) : clientId,
-        requestId: parsed.ext?.requestId ? String(parsed.ext.requestId) : requestId,
+        ...safeParsed.ext,
+        clientId: safeParsed.ext.clientId || clientId,
+        requestId: safeParsed.ext.requestId || requestId,
         debug: {
           model,
           finish_reason: finishReason,
