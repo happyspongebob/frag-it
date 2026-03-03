@@ -106,7 +106,7 @@ export default function App() {
     setAiComfortStatus('loading')
 
     const controller = new AbortController()
-    const timeoutMs = 2500
+    const timeoutMs = 8000
     const t = window.setTimeout(() => controller.abort(), timeoutMs)
 
     void fetch('/api/comfort', {
