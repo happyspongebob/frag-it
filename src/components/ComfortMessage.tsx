@@ -6,6 +6,17 @@ function pickRandom<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]
 }
 
+function pickSomeUnique(arr: string[], count: number): string[] {
+  const pool = [...arr]
+  const out: string[] = []
+  while (pool.length > 0 && out.length < count) {
+    const i = Math.floor(Math.random() * pool.length)
+    const [v] = pool.splice(i, 1)
+    if (typeof v === 'string' && v.trim().length) out.push(v)
+  }
+  return out
+}
+
 function sanitize(text: string) {
   return (text || '').replace(/\s+/g, ' ').trim()
 }
@@ -73,9 +84,9 @@ const affirmPool = [
 
 export type ComfortMessageValue = {
   problemText: string
-  comfort: string
+  comfort: string[]
   affirmation: string
-  category: Category
+  category: string
 }
 
 export function useComfortMessage(input: string): ComfortMessageValue {
@@ -85,10 +96,13 @@ export function useComfortMessage(input: string): ComfortMessageValue {
     const category = classify(problemText)
     const pool = [...(comfortPools[category] || []), ...comfortPools.common]
 
+    const comfortCount = 2
+    const comfort = pickSomeUnique(pool, comfortCount)
+
     return {
       problemText,
       category,
-      comfort: pickRandom(pool),
+      comfort: comfort.length ? comfort : [pickRandom(pool)],
       affirmation: pickRandom(affirmPool),
     }
   }, [input])
@@ -108,7 +122,13 @@ export default function ComfortMessage(props: {
 
       <div className="space-y-2">
         <p className="text-xs text-warm-muted">给你的安慰：</p>
-        <p className="text-base leading-8 text-warm-ink/95">{comfort}</p>
+        <div className="space-y-2">
+          {comfort.map((line, idx) => (
+            <p key={idx} className="text-base leading-8 text-warm-ink/95">
+              {line}
+            </p>
+          ))}
+        </div>
       </div>
 
       <div className="space-y-1">
