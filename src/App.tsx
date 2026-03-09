@@ -1,8 +1,15 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import CanvasShatter from './components/CanvasShatter'
 import ComfortMessage, { type ComfortMessageValue, useComfortMessage } from './components/ComfortMessage'
 import ShatterEffect from './components/ShatterEffect'
+
+import {
+  createHistoryId,
+} from './history'
+import type { CrushHistoryItem, HistorySource } from './history'
+import { useHistory } from './useHistory'
 
 type ViewState = 'input' | 'preCrush' | 'crushing' | 'result'
 
@@ -12,6 +19,7 @@ function sanitize(text: string) {
 
 export default function App() {
   const reduceMotion = useReducedMotion()
+  const navigate = useNavigate()
 
   const [state, setState] = useState<ViewState>('input')
   const [input, setInput] = useState('')
@@ -36,6 +44,10 @@ export default function App() {
 
   const comfortToShow = aiComfortStatus === 'success' && aiComfort ? aiComfort : localComfort
 
+  const { prepend } = useHistory()
+
+  const lastSavedSeedRef = useRef<number | null>(null)
+
   const followUps = useMemo(() => {
     return ['5 分钟后再回来看看', '把它变成一个更小的东西', '今天不碰，也是一种选择']
   }, [])
@@ -53,6 +65,22 @@ export default function App() {
     tearAudioRef.current = new Audio('/sfx/tear.mp3')
     tearAudioRef.current.preload = 'auto'
   }, [])
+
+  useEffect(() => {
+    if (state !== 'result') return
+    if (lastSavedSeedRef.current === seed) return
+
+    const source: HistorySource = aiComfortStatus === 'success' && aiComfort ? 'ai' : 'local'
+    const item: CrushHistoryItem = {
+      ...comfortToShow,
+      id: createHistoryId(),
+      createdAt: Date.now(),
+      source,
+    }
+
+    lastSavedSeedRef.current = seed
+    prepend(item)
+  }, [aiComfort, aiComfortStatus, comfortToShow, prepend, seed, state])
 
   useEffect(() => {
     if (state === 'preCrush') {
@@ -443,6 +471,14 @@ export default function App() {
                     className="mx-auto mt-8 flex w-full max-w-[360px] items-center justify-center rounded-full bg-gradient-to-r from-warm-accent2 to-warm-accent px-5 py-3.5 text-sm font-semibold text-warm-ink/90 shadow-[0_14px_30px_rgba(233,198,168,0.18)] transition active:scale-[0.99]"
                   >
                     粉碎新的烦恼
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate('/calendar')}
+                    className="mx-auto mt-3 flex w-full max-w-[360px] items-center justify-center rounded-full border border-black/10 bg-white/20 px-5 py-3 text-xs font-semibold text-warm-ink/65 backdrop-blur transition hover:bg-white/35"
+                  >
+                    查看使用日历
                   </button>
 
                   <motion.div
