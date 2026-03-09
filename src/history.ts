@@ -15,6 +15,8 @@ export type CrushHistoryItem = ComfortMessageValueLike & {
 
 export const HISTORY_KEY = 'frag-it.history.v1'
 
+export const LEGACY_HISTORY_KEYS = ['frag-it.history', 'frag-it.history.v0']
+
 function pad2(n: number) {
   return String(n).padStart(2, '0')
 }
@@ -51,8 +53,44 @@ export function safeParseHistory(raw: string | null): CrushHistoryItem[] {
   }
 }
 
+export type LoadHistoryResult = {
+  items: CrushHistoryItem[]
+  ok: boolean
+  key: string
+}
+
+function parseAndValidateHistory(raw: string | null): { items: CrushHistoryItem[]; ok: boolean } {
+  if (raw == null) return { items: [], ok: true }
+  if (raw === '') return { items: [], ok: true }
+  try {
+    const parsed = JSON.parse(raw) as unknown
+    if (!Array.isArray(parsed)) return { items: [], ok: false }
+    const items = safeParseHistory(raw)
+    if (parsed.length > 0 && items.length === 0) return { items: [], ok: false }
+    return { items, ok: true }
+  } catch {
+    return { items: [], ok: false }
+  }
+}
+
+export function loadHistoryResult(): LoadHistoryResult {
+  const primaryRaw = localStorage.getItem(HISTORY_KEY)
+  const primary = parseAndValidateHistory(primaryRaw)
+  if (primary.ok) return { items: primary.items, ok: true, key: HISTORY_KEY }
+
+  for (const key of LEGACY_HISTORY_KEYS) {
+    const raw = localStorage.getItem(key)
+    const parsed = parseAndValidateHistory(raw)
+    if (parsed.ok) {
+      return { items: parsed.items, ok: true, key }
+    }
+  }
+
+  return { items: [], ok: false, key: HISTORY_KEY }
+}
+
 export function loadHistory(): CrushHistoryItem[] {
-  return safeParseHistory(localStorage.getItem(HISTORY_KEY))
+  return loadHistoryResult().items
 }
 
 export function saveHistory(items: CrushHistoryItem[]) {
