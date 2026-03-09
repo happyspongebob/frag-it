@@ -7,6 +7,7 @@ import ShatterEffect from './components/ShatterEffect'
 
 import {
   createHistoryId,
+  loadHistory,
 } from './history'
 import type { CrushHistoryItem, HistorySource } from './history'
 import { useHistory } from './useHistory'
@@ -46,6 +47,8 @@ export default function App() {
 
   const { prepend } = useHistory()
 
+  const skipSaveRef = useRef(false)
+
   const lastSavedSeedRef = useRef<number | null>(null)
 
   const followUps = useMemo(() => {
@@ -68,6 +71,7 @@ export default function App() {
 
   useEffect(() => {
     if (state !== 'result') return
+    if (skipSaveRef.current) return
     if (lastSavedSeedRef.current === seed) return
 
     const source: HistorySource = aiComfortStatus === 'success' && aiComfort ? 'ai' : 'local'
@@ -81,6 +85,31 @@ export default function App() {
     lastSavedSeedRef.current = seed
     prepend(item)
   }, [aiComfort, aiComfortStatus, comfortToShow, prepend, seed, state])
+
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    const historyId = url.searchParams.get('historyId')
+    if (!historyId) return
+
+    const found = loadHistory().find((h) => h.id === historyId)
+    if (!found) {
+      navigate('/', { replace: true })
+      return
+    }
+
+    skipSaveRef.current = true
+    setAiComfort({
+      problemText: found.problemText,
+      comfort: found.comfort,
+      affirmation: found.affirmation,
+      category: found.category,
+    })
+    setAiComfortStatus('success')
+    setInput('')
+    setProblem(found.problemText)
+    setSeed((s) => s + 1)
+    setState('result')
+  }, [])
 
   useEffect(() => {
     if (state === 'preCrush') {
@@ -209,12 +238,14 @@ export default function App() {
   }
 
   function resetAll() {
+    skipSaveRef.current = false
     setInput('')
     setProblem('')
     setSeed((s) => s + 1)
     setAiComfort(null)
     setAiComfortStatus('idle')
     setState('input')
+    navigate('/', { replace: true })
   }
 
   return (
