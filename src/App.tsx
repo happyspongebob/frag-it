@@ -7,6 +7,7 @@ import ShatterEffect from './components/ShatterEffect'
 
 import {
   createHistoryId,
+  loadHistory,
 } from './history'
 import type { CrushHistoryItem, HistorySource } from './history'
 import { useHistory } from './useHistory'
@@ -44,7 +45,12 @@ export default function App() {
 
   const comfortToShow = aiComfortStatus === 'success' && aiComfort ? aiComfort : localComfort
 
-  const { prepend } = useHistory()
+  const { prepend, update } = useHistory()
+
+  const skipSaveRef = useRef(false)
+
+  const lastSavedIdRef = useRef<string | null>(null)
+  const lastSavedSourceRef = useRef<HistorySource | null>(null)
 
   const lastSavedSeedRef = useRef<number | null>(null)
 
@@ -68,19 +74,63 @@ export default function App() {
 
   useEffect(() => {
     if (state !== 'result') return
+    if (skipSaveRef.current) return
     if (lastSavedSeedRef.current === seed) return
 
     const source: HistorySource = aiComfortStatus === 'success' && aiComfort ? 'ai' : 'local'
-    const item: CrushHistoryItem = {
-      ...comfortToShow,
-      id: createHistoryId(),
-      createdAt: Date.now(),
-      source,
-    }
+    const id = createHistoryId()
+    const item: CrushHistoryItem = { ...comfortToShow, id, createdAt: Date.now(), source }
 
     lastSavedSeedRef.current = seed
+    lastSavedIdRef.current = id
+    lastSavedSourceRef.current = source
     prepend(item)
   }, [aiComfort, aiComfortStatus, comfortToShow, prepend, seed, state])
+
+  useEffect(() => {
+    if (skipSaveRef.current) return
+    if (state !== 'result') return
+    if (aiComfortStatus !== 'success' || !aiComfort) return
+
+    const id = lastSavedIdRef.current
+    if (!id) return
+    if (lastSavedSourceRef.current === 'ai') return
+
+    update(id, {
+      problemText: aiComfort.problemText,
+      comfort: aiComfort.comfort,
+      affirmation: aiComfort.affirmation,
+      category: aiComfort.category,
+      source: 'ai',
+    })
+
+    lastSavedSourceRef.current = 'ai'
+  }, [aiComfort, aiComfortStatus, state, update])
+
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    const historyId = url.searchParams.get('historyId')
+    if (!historyId) return
+
+    const found = loadHistory().find((h) => h.id === historyId)
+    if (!found) {
+      navigate('/', { replace: true })
+      return
+    }
+
+    skipSaveRef.current = true
+    setAiComfort({
+      problemText: found.problemText,
+      comfort: found.comfort,
+      affirmation: found.affirmation,
+      category: found.category,
+    })
+    setAiComfortStatus('success')
+    setInput('')
+    setProblem(found.problemText)
+    setSeed((s) => s + 1)
+    setState('result')
+  }, [])
 
   useEffect(() => {
     if (state === 'preCrush') {
@@ -209,12 +259,14 @@ export default function App() {
   }
 
   function resetAll() {
+    skipSaveRef.current = false
     setInput('')
     setProblem('')
     setSeed((s) => s + 1)
     setAiComfort(null)
     setAiComfortStatus('idle')
     setState('input')
+    navigate('/', { replace: true })
   }
 
   return (

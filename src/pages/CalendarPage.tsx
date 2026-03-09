@@ -235,7 +235,12 @@ export default function CalendarPage() {
           ) : (
             <div className="mt-4 space-y-3">
               {selectedDayItems.map((item) => (
-                <HistoryRow key={item.id} item={item} onDelete={() => remove(item.id)} />
+                <HistoryRow
+                  key={item.id}
+                  item={item}
+                  onOpen={() => navigate(`/?historyId=${encodeURIComponent(item.id)}`)}
+                  onDelete={() => remove(item.id)}
+                />
               ))}
             </div>
           )}
@@ -245,11 +250,15 @@ export default function CalendarPage() {
   )
 }
 
-function HistoryRow(props: { item: CrushHistoryItem; onDelete: () => void }) {
-  const { item, onDelete } = props
+function HistoryRow(props: { item: CrushHistoryItem; onOpen: () => void; onDelete: () => void }) {
+  const { item, onOpen, onDelete } = props
 
   return (
-    <div className="rounded-[18px] border border-black/10 bg-white/35 p-4 backdrop-blur">
+    <button
+      type="button"
+      onClick={onOpen}
+      className="w-full rounded-[18px] border border-black/10 bg-white/35 p-4 text-left backdrop-blur transition hover:bg-white/45"
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-[11px] font-semibold tracking-wide text-warm-ink/55">
@@ -260,12 +269,16 @@ function HistoryRow(props: { item: CrushHistoryItem; onDelete: () => void }) {
 
         <button
           type="button"
-          onClick={onDelete}
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onDelete()
+          }}
           className="rounded-full border border-black/10 bg-white/30 px-3 py-1 text-[11px] font-semibold text-warm-ink/60 backdrop-blur transition hover:bg-white/45"
         >
           删除
         </button>
       </div>
-    </div>
+    </button>
   )
 }
