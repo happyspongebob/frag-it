@@ -65,10 +65,23 @@ export function useHistory() {
     })
   }, [])
 
+  const update = useCallback((id: string, patch: Partial<CrushHistoryItem>) => {
+    setHistory((prev) => {
+      let changed = false
+      const next = prev.map((h) => {
+        if (h.id !== id) return h
+        changed = true
+        return { ...h, ...patch }
+      })
+      return changed ? next : prev
+    })
+  }, [])
+
   return {
     history,
     setHistory,
     prepend,
+    update,
     remove,
     clear,
   }
