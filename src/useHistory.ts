@@ -1,12 +1,36 @@
-import { useCallback, useEffect, useState } from 'react'
-import { loadHistory, saveHistory } from './history'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { HISTORY_KEY, loadHistoryResult, saveHistory } from './history'
 import type { CrushHistoryItem } from './history'
 
 export function useHistory() {
-  const [history, setHistory] = useState<CrushHistoryItem[]>(() => loadHistory())
+  const initialRef = useRef(loadHistoryResult())
+  const initial = initialRef.current
+  const canPersistRef = useRef(initial.ok)
+  const didMigrateRef = useRef(false)
+
+  const [history, setHistory] = useState<CrushHistoryItem[]>(() => initial.items)
+
+  useEffect(() => {
+    if (didMigrateRef.current) return
+    didMigrateRef.current = true
+
+    if (!initial.ok) return
+    if (initial.key === HISTORY_KEY) return
+    if (initial.items.length === 0) return
+
+    try {
+      const primaryRaw = localStorage.getItem(HISTORY_KEY)
+      if (primaryRaw == null || primaryRaw === '') {
+        saveHistory(initial.items)
+      }
+    } catch {
+      // ignore
+    }
+  }, [initial.items, initial.key, initial.ok])
 
   useEffect(() => {
     try {
+      if (!canPersistRef.current) return
       saveHistory(history)
     } catch {
       // ignore
@@ -15,8 +39,10 @@ export function useHistory() {
 
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
-      if (e.key !== 'frag-it.history.v1') return
-      setHistory(loadHistory())
+      if (e.key !== HISTORY_KEY) return
+      const next = loadHistoryResult()
+      if (!next.ok) return
+      setHistory(next.items)
     }
 
     window.addEventListener('storage', onStorage)
