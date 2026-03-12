@@ -184,7 +184,7 @@ export default function App() {
     setAiComfortStatus('loading')
 
     const controller = new AbortController()
-    const timeoutMs = 8000
+    const timeoutMs = 15_000
     const t = window.setTimeout(() => controller.abort(), timeoutMs)
 
     void fetch('/api/comfort', {
@@ -500,7 +500,24 @@ export default function App() {
                         ease: 'easeOut',
                       }}
                     >
-                      <ComfortMessage value={comfortToShow} />
+                      {aiComfortStatus === 'loading' ? (
+                        <div className="space-y-4">
+                          <div className="space-y-1">
+                            <p className="text-xs text-warm-muted">已粉碎的烦恼：</p>
+                            <p className="text-sm text-warm-ink/90">“{problem}”</p>
+                          </div>
+                          <div className="space-y-2">
+                            <p className="text-xs text-warm-muted">给你的安慰：</p>
+                            <p className="text-sm leading-7 text-warm-ink/55">正在生成更贴合你的安慰…</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-xs text-warm-muted">积极肯定：</p>
+                            <p className="text-sm leading-7 text-warm-ink/55">请稍等片刻。</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <ComfortMessage value={comfortToShow} />
+                      )}
                     </motion.div>
 
                     <motion.div
@@ -513,7 +530,7 @@ export default function App() {
                       }}
                       className="mt-6 rounded-full bg-gradient-to-r from-warm-accent2/40 to-warm-accent/25 px-4 py-3 text-center text-sm font-semibold text-warm-ink/80"
                     >
-                      {comfortToShow.affirmation}
+                      {aiComfortStatus === 'loading' ? '正在生成中…' : comfortToShow.affirmation}
                     </motion.div>
                   </div>
 
